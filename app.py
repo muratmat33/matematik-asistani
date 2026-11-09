@@ -23,7 +23,7 @@ client = genai.Client(api_key=api_key)
 
 # Ders Notlarını Yükleme Fonksiyonu
 @st.cache_data
-def load_curriculum_notes(folder_path="8_sinif"):
+def load_curriculum_notes(folder_path="notlar"):
     combined_notes = ""
     if os.path.exists(folder_path):
         for file_name in os.listdir(folder_path):
@@ -65,5 +65,33 @@ with col1:
         type=["jpg", "jpeg", "png", "webp"]
     )
     
+    image = None
     if uploaded_file is not None:
         image = Image.open(uploaded_file)
+        st.image(image, caption="Yüklenen Soru", use_container_width=True)
+        
+    # Buton artık her zaman sayfada sabit durur
+    solve_button = st.button("Soruyu Analiz Et ve Çöz", type="primary", use_container_width=True)
+
+with col2:
+    st.subheader("2. Pedagojik Çözüm Rehberi")
+    
+    if solve_button:
+        if uploaded_file is None:
+            st.warning("Lütfen önce sol taraftan bir soru fotoğrafı yükleyin.")
+        else:
+            with st.spinner("Soru inceleniyor ve öğretmen anlatımı hazırlanıyor..."):
+                try:
+                    response = client.models.generate_content(
+                        model="gemini-2.5-flash",
+                        contents=[image, "Lütfen bu soruyu ders notlarımız doğrultusunda adım adım açıkla ve çöz."],
+                        config=types.GenerateContentConfig(
+                            system_instruction=SYSTEM_INSTRUCTION,
+                            temperature=0.2,
+                        )
+                    )
+                    st.markdown(response.text)
+                except Exception as e:
+                    st.error(f"Çözüm oluşturulurken bir hata oluştu: {str(e)}")
+    else:
+        st.info("Sol taraftan bir soru görseli yükleyip 'Soruyu Analiz Et ve Çöz' butonuna basınız.")
