@@ -11,15 +11,18 @@ st.set_page_config(
     layout="wide"
 )
 
-# API Anahtarı Kontrolü (Streamlit Cloud Secrets veya Ortam Değişkeni)
+# API Anahtarı Kontrolü
 api_key = st.secrets.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY")
 
 if not api_key:
     st.error("Lütfen GEMINI_API_KEY anahtarını Streamlit Secrets alanına ekleyin.")
     st.stop()
 
-# Gemini İstemcisi
-client = genai.Client(api_key=api_key)
+# Gemini İstemcisi (v1beta sürümü ile başlatılıyor)
+client = genai.Client(
+    api_key=api_key,
+    http_options={"api_version": "v1beta"}
+)
 
 # Ders Notlarını Yükleme Fonksiyonu
 @st.cache_data
@@ -70,7 +73,6 @@ with col1:
         image = Image.open(uploaded_file)
         st.image(image, caption="Yüklenen Soru", use_container_width=True)
         
-    # Buton artık her zaman sayfada sabit durur
     solve_button = st.button("Soruyu Analiz Et ve Çöz", type="primary", use_container_width=True)
 
 with col2:
@@ -82,11 +84,13 @@ with col2:
         else:
             with st.spinner("Soru inceleniyor ve öğretmen anlatımı hazırlanıyor..."):
                 try:
+                    # Model çağrısı
+                    user_prompt = f"{SYSTEM_INSTRUCTION}\n\nLütfen bu soruyu yukarıdaki kurallar ve ders notlarımız doğrultusunda adım adım açıkla ve çöz."
+                    
                     response = client.models.generate_content(
                         model="gemini-2.5-flash",
-                        contents=[image, "Lütfen bu soruyu ders notlarımız doğrultusunda adım adım açıkla ve çöz."],
+                        contents=[image, user_prompt],
                         config=types.GenerateContentConfig(
-                            system_instruction=SYSTEM_INSTRUCTION,
                             temperature=0.2,
                         )
                     )
