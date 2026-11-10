@@ -5,9 +5,9 @@ import tempfile
 from google import genai
 from google.genai import types
 
-# Sayfa yapılandırması
+# Sayfa Yapılandırması
 st.set_page_config(
-    page_title="8. Sınıf Matematik Asistanı",
+    page_title="LGS Matematik Asistanı & Koçu",
     page_icon="📐",
     layout="wide"
 )
@@ -25,129 +25,229 @@ client = genai.Client(
     http_options={"api_version": "v1beta"}
 )
 
-# Session State Hazırlığı (Yüklenen PDF referanslarını saklamak için)
-if "uploaded_pdf_files" not in st.session_state:
-    st.session_state.uploaded_pdf_files = []
+# Session State Hazırlığı
+if "active_books" not in st.session_state:
+    st.session_state.active_books = []
 
-# --- YAN MENÜ: ÖĞRETMEN PDF & KAYNAK YÖNETİMİ ---
+# --- SOL MENÜ: KİTAP YÜKLEME ---
 with st.sidebar:
-    st.header("📚 Ders Kaynakları & PDF Havuzu")
-    st.caption("8. sınıf deneme, soru bankası veya konu föyü PDF'lerini buradan sisteme yükleyin.")
+    st.header("📚 Soru Bankası & Deneme Havuzu")
+    st.caption("8. sınıf kitap veya deneme PDF'lerinizi buradan sisteme yükleyin.")
     
-    uploaded_pdfs = st.file_uploader(
-        "Kitap veya Deneme PDF'i Seçin", 
+    uploaded_files = st.file_uploader(
+        "PDF Kitap / Deneme Seçin", 
         type=["pdf"], 
         accept_multiple_files=True
     )
     
-    if uploaded_pdfs:
-        if st.button("Seçilen PDF'leri Asistana Tanıt", use_container_width=True):
-            with st.spinner("Kitap ve denemeler analiz ediliyor..."):
-                processed_files = []
-                for pdf_file in uploaded_pdfs:
-                    # Geçici olarak diske kaydet ve Gemini Files API'ye aktar
+    if uploaded_files:
+        if st.button("Kitapları Sisteme Tanıt ve İndeksle", use_container_width=True):
+            with st.spinner("Kitaplar taranıyor, test tipleri ve cevap anahtarları haritalanıyor..."):
+                processed = []
+                for f in uploaded_files:
                     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-                        tmp.write(pdf_file.read())
+                        tmp.write(f.read())
                         tmp_path = tmp.name
                     
                     try:
-                        uploaded_doc = client.files.upload(
+                        doc = client.files.upload(
                             file=tmp_path,
-                            config=types.UploadFileConfig(display_name=pdf_file.name)
+                            config=types.UploadFileConfig(display_name=f.name)
                         )
-                        processed_files.append((pdf_file.name, uploaded_doc))
+                        processed.append((f.name, doc))
                     finally:
                         if os.path.exists(tmp_path):
                             os.remove(tmp_path)
                             
-                st.session_state.uploaded_pdf_files = processed_files
-                st.success(f"{len(processed_files)} adet kaynak başarıyla hafızaya alındı!")
+                st.session_state.active_books = processed
+                st.success(f"{len(processed)} adet kitap hafızaya alındı!")
 
-    if st.session_state.uploaded_pdf_files:
+    if st.session_state.active_books:
         st.write("---")
-        st.subheader("Aktif Kaynaklar")
-        for name, _ in st.session_state.uploaded_pdf_files:
-            st.markdown(f"- 📄 `{name}`")
+        st.subheader("Hafızadaki Kitaplar")
+        for name, _ in st.session_state.active_books:
+            st.markdown(f"- 📘 `{name}`")
 
-# --- KLASÖR NOTLARINI YÜKLEME ---
-@st.cache_data
-def load_curriculum_notes(folder_path="notlar"):
-    combined_notes = ""
-    if os.path.exists(folder_path):
-        for file_name in os.listdir(folder_path):
-            if file_name.endswith((".txt", ".md")):
-                with open(os.path.join(folder_path, file_name), "r", encoding="utf-8") as f:
-                    combined_notes += f"\n--- {file_name} ---\n" + f.read()
-    return combined_notes
+# --- PEDAGOJİK TALİMAT ŞABLONU ---
+BASE_TEACHER_PROMPT = """
+Sen LGS hazırlık sürecinde uzman, kavramsal öğretimi merkeze alan tecrübeli bir 8. Sınıf Matematik Öğretmenisin.
+Sana referans olarak 8. sınıf soru bankaları ve deneme PDF'leri verilmektedir.
 
-curriculum_context = load_curriculum_notes()
+KİTAPLARI ANALİZ EDERKEN ŞU KURALLARA DİKKAT ET:
+1. TEST KADEMELERİNİ AYIRT ET: Bir kitabın içinde testler sırayla gider.
+   - Kazanım/Kavrama: Temel kuralı doğrudan sorgulayan kısa sorular.
+   - Pekiştirme: Orta zorlukta, kısa kurgulu sorular.
+   - Yeni Nesil: Günlük hayat bağlamı, şekil/tablo içeren LGS tarzı beceri temelli sorular.
+   - Çıkmış/Örnek: MEB sınav soruları formatı.
+2. CEVAP ANAHTARI KONTROLÜ: Kitapların sonunda yer alan cevap anahtarlarını kontrol et. Kendi çözümünle cevap anahtarındaki seçeneği karşılaştır. Eğer bir çelişki varsa işlem adımlarını tekrar teyit ederek doğrulanmış sonuca ulaş.
+3. PEDAGOJİK ANLATIM: Sadece sonucu söyleme. Öğrenciye formülü neden kullandığını, kritik işlem tuzaklarını ("Burada şuna dikkat et...") açıkla. Matematiksel gösterimleri LaTeX ($...$) formatında yaz.
+"""
 
-# --- ANA EKRAN ---
-st.title("📐 8. Sınıf Akıllı Matematik Çözüm & Öğretmen Asistanı")
-st.caption("Öğrenci soru fotoğrafını yükler; asistan yüklediğiniz kitap ve deneme mantığıyla pedagojik çözüm sunar.")
+# --- ANA EKRAN SEKMELERİ ---
+st.title("📐 8. Sınıf Akıllı Matematik Asistanı & LGS Koçu")
 
-col1, col2 = st.columns([1, 1])
+tab1, tab2, tab3 = st.tabs([
+    "📷 Soru Çözümü & Kontrol", 
+    "🎯 Kitaptan Soru Seç & Üret", 
+    "📊 Deneme Analizi & Telafi Reçetesi"
+])
 
-with col1:
-    st.subheader("1. Soru Fotoğrafı")
-    uploaded_file = st.file_uploader(
-        "Kamera veya galeriden soru yükleyin", 
-        type=["jpg", "jpeg", "png", "webp"]
+# ==========================================
+# SEKME 1: SORU ÇÖZÜMÜ
+# ==========================================
+with tab1:
+    col_img, col_sol = st.columns([1, 1])
+    
+    with col_img:
+        st.subheader("1. Soru Görseli")
+        q_img = st.file_uploader("Soru fotoğrafı yükleyin", type=["jpg", "png", "jpeg"], key="q_solver")
+        img_obj = None
+        if q_img:
+            img_obj = Image.open(q_img)
+            st.image(img_obj, use_container_width=True)
+            
+        btn_solve = st.button("Soruyu Analiz Et, Çöz ve Doğrula", type="primary", use_container_width=True)
+
+    with col_sol:
+        st.subheader("2. Öğretmen Çözüm Rehberi")
+        if btn_solve:
+            if not img_obj:
+                st.warning("Lütfen önce bir soru fotoğrafı yükleyin.")
+            else:
+                with st.spinner("Soru çözülüyor, kitap seviyesi belirleniyor ve cevap anahtarı taranıyor..."):
+                    payload = [BASE_TEACHER_PROMPT]
+                    for _, doc in st.session_state.active_books:
+                        payload.append(doc)
+                    payload.append(img_obj)
+                    payload.append("""
+                    Bu soruyu çöz:
+                    1. Sorunun seviyesini belirle (Kazanım mı, Pekiştirme mi, Yeni Nesil mi?).
+                    2. Eğer bu soru ekteki kitaplardan birindeyse, arka cevap anahtarından kontrol et ve belirt.
+                    3. Adım adım pedagojik çözümünü yap.
+                    4. 'Öğretmenin Püf Noktası / Dikkat Tuzağı' uyarısı ekle.
+                    """)
+                    
+                    try:
+                        res = client.models.generate_content(
+                            model="gemini-2.5-flash",
+                            contents=payload,
+                            config=types.GenerateContentConfig(temperature=0.2)
+                        )
+                        st.markdown(res.text)
+                    except Exception as e:
+                        st.error(f"Hata: {str(e)}")
+
+# ==========================================
+# SEKME 2: KİTAPTAN SORU SEÇ & ÜRET
+# ==========================================
+with tab2:
+    st.subheader("Kitap Havuzundan Filtreli Soru Seçimi / Üretimi")
+    st.caption("Yüklediğiniz kitapların içindeki ilgili seviyedeki testlerden soru seçin veya o kalıpta yeni soru türetin.")
+    
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        topic = st.selectbox("Ünite / Konu", [
+            "Çarpanlar ve Katlar (EBOB-EKOK)",
+            "Üslü İfadeler",
+            "Kareköklü İfadeler",
+            "Veri Analizi",
+            "Basit Olayların Olma Olasılığı",
+            "Cebirsel İfadeler ve Özdeşlikler",
+            "Doğrusal Denklemler",
+            "Eşitsizlikler",
+            "Üçgenler",
+            "Eşlik ve Benzerlik",
+            "Dönüşüm Geometrisi",
+            "Geometrik Cisimler"
+        ])
+    with c2:
+        difficulty = st.selectbox("İstenen Soru Seviyesi", [
+            "Kazanım / Kavrama Düzeyi (Temel İşlem & Kural)",
+            "Pekiştirme Düzeyi (Geçiş & Orta Düzey Problem)",
+            "Yeni Nesil / Beceri Temelli (LGS Sınav Düzeyi)",
+            "MEB Çıkmış Soru / Örnek Soru Benzeri"
+        ])
+    with c3:
+        mode = st.radio("İşlem Türü", ["Kitaptan Birebir Soru Bul/Getir", "Kitap Formatında Yeni Soru Üret"])
+        
+    custom_note = st.text_input("Özel Öğretmen Notu (Opsiyonel)", placeholder="Örn: Soruda karekök yaklaşık değer ve cetvel kullanımı olsun.")
+    
+    if st.button("Soruyu Getir / Üret", type="primary"):
+        if not st.session_state.active_books:
+            st.warning("Lütfen önce sol menüden en az bir kitap PDF'i yükleyin.")
+        else:
+            with st.spinner("Kitaplar taranıyor, belirtilen seviyedeki testten soru seçiliyor..."):
+                payload = [BASE_TEACHER_PROMPT]
+                for _, doc in st.session_state.active_books:
+                    payload.append(doc)
+                
+                payload.append(f"""
+                GÖREV:
+                Konu: {topic}
+                Hedef Seviye: {difficulty}
+                İşlem Modu: {mode}
+                Ek Öğretmen Notu: {custom_note}
+
+                Yüklenen kitapların içinden '{difficulty}' niteliğindeki test sayfalarını bul.
+                Eğer 'Kitaptan Birebir Soru Getir' seçildiyse: O testten tam bu nitelikte bir soruyu, şıklarıyla ve kitabın sonundaki cevap anahtarıyla doğrulanmış çözümüyle aktar.
+                Eğer 'Yeni Soru Üret' seçildiyse: Kitaptaki o test seviyesinin dili ve kurgusuyla birebir eşdeğer yeni bir soru yaz ve adım adım çözümünü ekle.
+                """)
+                
+                try:
+                    res = client.models.generate_content(
+                        model="gemini-2.5-flash",
+                        contents=payload,
+                        config=types.GenerateContentConfig(temperature=0.3)
+                    )
+                    st.markdown(res.text)
+                except Exception as e:
+                    st.error(f"Hata: {str(e)}")
+
+# ==========================================
+# SEKME 3: DENEME KARNESİ & TELAFİ REÇETESİ
+# ==========================================
+with tab3:
+    st.subheader("Öğrenci Deneme Karnesi & Kişisel Telafi Reçetesi")
+    st.caption("Öğrencinin LGS denemesinde boş bıraktığı veya yanlış yaptığı kazanımları girin; sistem kitaplardan aşamalı telafi föyü oluştursun.")
+    
+    student_name = st.text_input("Öğrenci Adı Soyadı", placeholder="Örn: Ahmet Yılmaz")
+    incorrect_topics = st.text_area(
+        "Yanlış / Boş Bırakılan Konular ve Kazanımlar",
+        placeholder="Örn:\n1. EBOB-EKOK problemleri (özellikle aralık bulma)\n2. Kareköklü sayılarda toplama ve yaklaşık değer"
     )
     
-    image = None
-    if uploaded_file is not None:
-        image = Image.open(uploaded_file)
-        st.image(image, caption="Yüklenen Soru", use_container_width=True)
-        
-    solve_button = st.button("Soruyu Analiz Et ve Çöz", type="primary", use_container_width=True)
-
-with col2:
-    st.subheader("2. Pedagojik Çözüm Rehberi")
-    
-    if solve_button:
-        if uploaded_file is None:
-            st.warning("Lütfen önce sol taraftan bir soru fotoğrafı yükleyin.")
+    if st.button("Kişiye Özel Telafi Reçetesi Oluştur", type="primary"):
+        if not st.session_state.active_books:
+            st.warning("Lütfen önce sol menüden en az bir kitap PDF'i yükleyin.")
+        elif not incorrect_topics:
+            st.warning("Lütfen eksik kazanımları yazın.")
         else:
-            with st.spinner("Soru inceleniyor, kaynak kitaplar taranıyor ve çözüm hazırlanıyor..."):
+            with st.spinner(f"{student_name} için kitaplardan özel telafi fasikülü derleniyor..."):
+                payload = [BASE_TEACHER_PROMPT]
+                for _, doc in st.session_state.active_books:
+                    payload.append(doc)
+                
+                payload.append(f"""
+                ÖĞRENCİ TELAFİ PLANI GÖREVİ:
+                Öğrenci: {student_name}
+                Eksik / Yanlış Yapılan Konular:
+                {incorrect_topics}
+
+                Yüklenen kitaplardaki ilgili üniteleri tara ve öğrenci için şu formatta eksiksiz bir 'Kişisel LGS Telafi Föyü' hazırla:
+                1. KRİTİK HATIRLATMA (Özet): Her eksik konu için kitaplardaki püf noktaları ve sık yapılan kavram yanılgılarını 3-4 maddede özetle.
+                2. AŞAMALI SORU REÇETESİ (Her eksik konu için mutlaka 3 seviye sun):
+                   - 🟢 Seviye 1 (Kazanım Sorusu): Temel kavramı oturtmak için.
+                   - 🟡 Seviye 2 (Pekiştirme Sorusu): İşlem ve mantığı güçlendirmek için.
+                   - 🔴 Seviye 3 (LGS Yeni Nesil Sorusu): Denemede kaçırılan soru tarzının birebir muadili.
+                3. CEVAP ANAHTARI VE PEDAGOJİK ÇÖZÜMLER: Soruların sonunda, kitapların arkasındaki cevap anahtarı formatına uygun olarak doğrulanmış detaylı çözümleri sun.
+                """)
+                
                 try:
-                    # Sistem Promptu
-                    system_prompt = f"""
-Sen sabırlı, motive edici, kavramsal anlamayı merkeze alan uzman bir 8. Sınıf İlköğretim Matematik Öğretmenisin.
-Sana bir öğrencinin takıldığı sorunun görseli ve referans alabileceğin deneme/kitap PDF'leri ile öğretmen ders notları sunulmaktadır.
-
-[DERS VE KAZANIM NOTLARI]
-{curriculum_context}
-
-GÖREVLERİN:
-1. Görseldeki soruyu, verileri ve şekilleri titizlikle analiz et.
-2. Çözümü yaparken varsa hafızandaki PDF kitaplarındaki yaklaşım tarzını ve yukarıdaki ders notlarını temel al.
-3. Asla sadece cevabı verme. Adım adım, neden-sonuç bağı kurarak LGS düzeyinde rehberlik et.
-4. "Öğretmenin Püf Noktası / Dikkat Tuzağı" başlığı altında öğrencilerin sıkça yaptığı işlem veya okuma hatalarını belirt.
-5. Çözümün en sonuna, öğrencinin konuyu pekiştirmesi için yüklenen denemelerdeki soru formatına uygun YENİ BİR BENZER PEKİŞTİRME SORUSU ve kısa cevabını ekle.
-6. Matematiksel formülleri LaTeX ($...$) olarak biçimlendir.
-"""
-                    # Gönderilecek içerikler listesi
-                    contents_payload = [system_prompt]
-                    
-                    # Varsa yüklenen PDF dökümanlarını ekle
-                    for _, doc_ref in st.session_state.uploaded_pdf_files:
-                        contents_payload.append(doc_ref)
-                        
-                    # Soru görseli ve son talimat
-                    contents_payload.append(image)
-                    contents_payload.append("Lütfen bu soruyu ders notlarımız ve ekteki kitaplar doğrultusunda pedagojik olarak açıkla ve çöz.")
-
-                    # Gemini çağrısı
-                    response = client.models.generate_content(
+                    res = client.models.generate_content(
                         model="gemini-2.5-flash",
-                        contents=contents_payload,
-                        config=types.GenerateContentConfig(
-                            temperature=0.2,
-                        )
+                        contents=payload,
+                        config=types.GenerateContentConfig(temperature=0.2)
                     )
-                    st.markdown(response.text)
+                    st.markdown(res.text)
                 except Exception as e:
-                    st.error(f"Çözüm oluşturulurken bir hata oluştu: {str(e)}")
-    else:
-        st.info("Sol taraftan bir soru görseli yükleyip 'Soruyu Analiz Et ve Çöz' butonuna basınız.")
+                    st.error(f"Hata: {str(e)}")
