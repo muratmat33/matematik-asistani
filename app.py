@@ -44,9 +44,9 @@ def render_pdf_page_as_image(pdf_path, page_number):
         st.error(f"Sayfa görselleştirilemedi: {str(e)}")
     return None
 
-# --- İNTERAKTİF DİJİTAL TAHTA & ANİMASYONLU ÖĞRETMEN BİLEŞENİ ---
+# --- İNTERAKTİF DİJİTAL TAHTA BİLEŞENİ (F-STRING ÇAKIŞMASI GİDERİLDİ) ---
 def render_chalkboard_ui(steps_json_str, teacher_tip, final_answer):
-    html_code = f"""
+    html_template = """
     <!DOCTYPE html>
     <html lang="tr">
     <head>
@@ -55,200 +55,191 @@ def render_chalkboard_ui(steps_json_str, teacher_tip, final_answer):
       <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
       <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
       <style>
-        body {{
+        body {
           margin: 0;
-          padding: 10px;
+          padding: 8px;
           font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
           background-color: transparent;
-        }}
-        .board-container {{
+        }
+        .board-container {
           display: flex;
           gap: 15px;
-          background: #1c3b2b; /* Klasik Okul Yeşil Tahtası */
-          border: 12px solid #8B5A2B; /* Ahşap Çerçeve */
+          background: #1c3b2b;
+          border: 10px solid #8B5A2B;
           border-radius: 12px;
-          box-shadow: 0 10px 25px rgba(0,0,0,0.4);
-          padding: 20px;
+          box-shadow: 0 8px 20px rgba(0,0,0,0.35);
+          padding: 16px;
           min-height: 480px;
           box-sizing: border-box;
           color: #f1f8e9;
-        }}
-        .character-zone {{
-          width: 140px;
+        }
+        .character-zone {
+          width: 130px;
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: flex-start;
           border-right: 2px dashed rgba(255,255,255,0.2);
-          padding-right: 15px;
-        }}
-        .teacher-avatar {{
-          width: 90px;
-          height: 90px;
+          padding-right: 12px;
+        }
+        .teacher-avatar {
+          width: 80px;
+          height: 80px;
           border-radius: 50%;
           background: #2e7d32;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 45px;
+          font-size: 40px;
           border: 3px solid #a5d6a7;
-          box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+          box-shadow: 0 4px 8px rgba(0,0,0,0.3);
           animation: floatTeacher 3s ease-in-out infinite;
-        }}
-        @keyframes floatTeacher {{
-          0%, 100% {{ transform: translateY(0px); }}
-          50% {{ transform: translateY(-8px); }}
-        }}
-        .teacher-speech {{
+        }
+        @keyframes floatTeacher {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-6px); }
+        }
+        .teacher-speech {
           background: #ffffff;
           color: #212121;
-          border-radius: 10px;
-          padding: 8px 10px;
+          border-radius: 8px;
+          padding: 8px;
           font-size: 12px;
           font-weight: bold;
-          margin-top: 15px;
+          margin-top: 12px;
           text-align: center;
           position: relative;
-          box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-        }}
-        .teacher-speech:after {{
+          box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+        }
+        .teacher-speech:after {
           content: '';
           position: absolute;
-          top: -8px;
+          top: -6px;
           left: 50%;
           transform: translateX(-50%);
-          border-width: 0 8px 8px;
+          border-width: 0 6px 6px;
           border-style: solid;
           border-color: #ffffff transparent;
           display: block;
           width: 0;
-        }}
-        .board-zone {{
+        }
+        .board-zone {
           flex: 1;
           display: flex;
           flex-direction: column;
           justify-content: space-between;
-        }}
-        .board-header {{
+        }
+        .board-header {
           border-bottom: 2px solid rgba(255,255,255,0.2);
-          padding-bottom: 8px;
-          margin-bottom: 12px;
+          padding-bottom: 6px;
+          margin-bottom: 10px;
           display: flex;
           justify-content: space-between;
           align-items: center;
-        }}
-        .board-header h3 {{
+        }
+        .board-header h3 {
           margin: 0;
-          font-size: 18px;
+          font-size: 17px;
           color: #e8f5e9;
           letter-spacing: 1px;
-        }}
-        .chalk-steps {{
+        }
+        .chalk-steps {
           flex: 1;
           overflow-y: auto;
           padding-right: 5px;
-          max-height: 320px;
-        }}
-        .step-item {{
-          background: rgba(255,255,255,0.06);
+          max-height: 310px;
+        }
+        .step-item {
+          background: rgba(255,255,255,0.08);
           border-left: 4px solid #81c784;
-          padding: 10px 14px;
-          margin-bottom: 10px;
+          padding: 10px 12px;
+          margin-bottom: 8px;
           border-radius: 4px;
-          animation: fadeIn 0.4s ease-in;
+          animation: fadeIn 0.3s ease-in;
           font-size: 15px;
           line-height: 1.5;
-        }}
-        .step-title {{
+        }
+        .step-title {
           font-weight: bold;
           color: #aed581;
           margin-bottom: 4px;
           font-size: 13px;
-        }}
-        .tip-box {{
+        }
+        .tip-box {
           background: rgba(255, 235, 59, 0.15);
           border: 2px dashed #fbc02d;
           border-radius: 8px;
           padding: 10px;
-          margin-top: 10px;
+          margin-top: 8px;
           color: #fff9c4;
           font-size: 13px;
-        }}
-        .ans-badge {{
+        }
+        .ans-badge {
           background: #388e3c;
           color: #ffffff;
           padding: 4px 10px;
           border-radius: 6px;
           font-size: 13px;
           font-weight: bold;
-        }}
-        .board-controls {{
+        }
+        .board-controls {
           display: flex;
           gap: 10px;
-          margin-top: 15px;
+          margin-top: 12px;
           padding-top: 10px;
           border-top: 1px solid rgba(255,255,255,0.2);
-        }}
-        button {{
+        }
+        button {
           background: #4caf50;
           color: white;
           border: none;
-          padding: 8px 16px;
-          font-size: 14px;
+          padding: 8px 14px;
+          font-size: 13px;
           font-weight: bold;
           border-radius: 6px;
           cursor: pointer;
-          transition: 0.2s;
-        }}
-        button:hover {{
+        }
+        button:hover {
           background: #43a047;
-          transform: scale(1.02);
-        }}
-        button.secondary {{
+        }
+        button.secondary {
           background: rgba(255,255,255,0.2);
-        }}
-        button.secondary:hover {{
-          background: rgba(255,255,255,0.3);
-        }}
-        @keyframes fadeIn {{
-          from {{ opacity: 0; transform: translateY(6px); }}
-          to {{ opacity: 1; transform: translateY(0); }}
-        }}
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(5px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
       </style>
     </head>
     <body>
       <div class="board-container">
-        <!-- Öğretmen Karakter Alanı -->
         <div class="character-zone">
-          <div class="teacher-avatar" id="avatarIcon">👨‍🏫</div>
+          <div class="teacher-avatar">👨‍🏫</div>
           <div class="teacher-speech" id="teacherMsg">Hazırsan ilk adımla başlayalım!</div>
         </div>
 
-        <!-- Dijital Yeşil Tahta Alanı -->
         <div class="board-zone">
           <div class="board-header">
             <h3>📐 DİJİTAL MATEMATİK TAHTASI</h3>
-            <span class="ans-badge">Doğru Cevap: {final_answer}</span>
+            <span class="ans-badge">Cevap: __FINAL_ANS__</span>
           </div>
 
-          <div class="chalk-steps" id="stepsContainer">
-            <!-- Adımlar JS ile dinamik gelecek -->
-          </div>
+          <div class="chalk-steps" id="stepsContainer"></div>
 
           <div id="tipContainer" style="display: none;" class="tip-box">
-            <strong>💡 Öğretmenin Püf Noktası:</strong> {teacher_tip}
+            <strong>💡 Öğretmenin Püf Noktası:</strong> __TEACHER_TIP__
           </div>
 
           <div class="board-controls">
             <button onclick="nextStep()" id="btnNext">👉 Sonraki Adımı Yaz</button>
-            <button onclick="showAllSteps()" class="secondary">Tamamını Tahtaya Yaz</button>
-            <button onclick="resetBoard()" class="secondary">Tahtayı Temizle</button>
+            <button onclick="showAllSteps()" class="secondary">Tamamını Göster</button>
+            <button onclick="resetBoard()" class="secondary">Temizle</button>
           </div>
         </div>
       </div>
 
       <script>
-        const steps = {steps_json_str};
+        const rawSteps = __STEPS_JSON__;
         let currentStep = 0;
 
         const msgs = [
@@ -259,28 +250,27 @@ def render_chalkboard_ui(steps_json_str, teacher_tip, final_answer):
           "Tebrikler! Çözümü tamamladık."
         ];
 
-        function renderMath() {{
-          if (window.renderMathInElement) {{
-            renderMathInElement(document.getElementById("stepsContainer"), {{
+        function renderMath() {
+          if (window.renderMathInElement) {
+            renderMathInElement(document.getElementById("stepsContainer"), {
               delimiters: [
-                {{left: "$$", right: "$$", display: true}},
-                {{left: "$", right: "$", display: false}}
+                {left: "$$", right: "$$", display: true},
+                {left: "$", right: "$", display: false}
               ]
-            }});
-          }}
-        }}
+            });
+          }
+        }
 
-        function nextStep() {{
-          if (currentStep < steps.length) {{
-            const step = steps[currentStep];
+        function nextStep() {
+          if (currentStep < rawSteps.length) {
+            const step = rawSteps[currentStep];
             const container = document.getElementById("stepsContainer");
             
             const stepDiv = document.createElement("div");
             stepDiv.className = "step-item";
-            stepDiv.innerHTML = `<div class="step-title">Adım ${{currentStep + 1}}: ${{step.title}}</div><div>${{step.content}}</div>`;
+            stepDiv.innerHTML = '<div class="step-title">Adım ' + (currentStep + 1) + ': ' + (step.title || "") + '</div><div>' + (step.content || "") + '</div>';
             container.appendChild(stepDiv);
             
-            // Öğretmen mesajını güncelle
             const msgIdx = Math.min(currentStep, msgs.length - 1);
             document.getElementById("teacherMsg").innerText = msgs[msgIdx];
             
@@ -288,39 +278,51 @@ def render_chalkboard_ui(steps_json_str, teacher_tip, final_answer):
             renderMath();
             container.scrollTop = container.scrollHeight;
 
-            if (currentStep >= steps.length) {{
+            if (currentStep >= rawSteps.length) {
               document.getElementById("tipContainer").style.display = "block";
               document.getElementById("btnNext").disabled = true;
               document.getElementById("btnNext").innerText = "✅ Çözüm Bitti";
               document.getElementById("teacherMsg").innerText = "Harika iş çıkardın!";
-            }}
-          }}
-        }}
+            }
+          }
+        }
 
-        function showAllSteps() {{
-          while (currentStep < steps.length) {{
+        function showAllSteps() {
+          while (currentStep < rawSteps.length) {
             nextStep();
-          }}
-        }}
+          }
+        }
 
-        function resetBoard() {{
+        function resetBoard() {
           document.getElementById("stepsContainer").innerHTML = "";
           document.getElementById("tipContainer").style.display = "none";
           document.getElementById("btnNext").disabled = false;
           document.getElementById("btnNext").innerText = "👉 Sonraki Adımı Yaz";
-          document.getElementById("teacherMsg").innerText = "Tahta temizlendi. Baştan alalım!";
+          document.getElementById("teacherMsg").innerText = "Baştan alalım!";
           currentStep = 0;
-        }}
+        }
 
-        window.onload = function() {{
-          // İlk adımı otomatik yazdır
+        window.onload = function() {
           nextStep();
-        }};
+        };
       </script>
     </body>
     </html>
     """
-    components.html(html_code, height=520, scrolling=False)
+
+    # Değişkenleri güvenli biçimde şablona yerleştir
+    safe_steps = steps_json_str if steps_json_str else "[]"
+    safe_tip = teacher_tip.replace('"', '&quot;').replace("'", "&#39;") if teacher_tip else ""
+    safe_ans = str(final_answer).replace('"', '')
+
+    rendered_html = (
+        html_template
+        .replace("__STEPS_JSON__", safe_steps)
+        .replace("__TEACHER_TIP__", safe_tip)
+        .replace("__FINAL_ANS__", safe_ans)
+    )
+
+    components.html(rendered_html, height=520, scrolling=False)
 
 # --- MEB RESMİ 8. SINIF LGS KAZANIM LİSTESİ ---
 LGS_KAZANIMLAR = [
@@ -401,15 +403,11 @@ with st.sidebar:
         for name, _, _ in st.session_state.active_books:
             st.markdown(f"- 📘 `{name}`")
 
-# --- PEDAGOJİK TALİMAT VE KOÇLUK PROTOKOLÜ ---
+# --- PEDAGOJİK TALİMAT ŞABLONU ---
 BASE_TEACHER_PROMPT = """
-Sen LGS hazırlık sürecinde uzman, MEB müfredatına ve soru mantığına hâkim bir 8. Sınıf Matematik Öğretmenisin.
-Sana referans olarak 8. sınıf soru bankaları ve deneme PDF'leri verilmektedir.
-
-DİKKAT EDİLECEK TEMEL İLKELER:
-1. FORMÜLLER VE İŞLEMLER: Matematiksel tüm gösterimleri, köklü ifadeleri, üslü sayıları ve denklemleri kesinlikle KaTeX/LaTeX formatında yaz ($...$).
-2. ADIM ADIM ANLATIM: Çözümü kütle halinde değil, tahtaya yazılacak mantıksal 3-5 adıma böl.
-3. CEVAP ANAHTARI DOĞRULAMASI: Soruların doğruluğunu kitap sonundaki cevap anahtarlarıyla çapraz denetle.
+Sen LGS hazırlık sürecinde uzman bir 8. Sınıf Matematik Öğretmenisin.
+Tüm matematiksel gösterimleri KaTeX/LaTeX formatında ($...$) yaz.
+Cevap anahtarını doğrula ve çözümü aşamalara böl.
 """
 
 # --- ANA EKRAN SEKMELERİ ---
@@ -459,7 +457,6 @@ with tab1:
                     Tüm matematiksel formülleri $...$ içinde KaTeX/LaTeX olarak yaz.
 
                     YANITINI ŞU KESİN JSON FORMATINDA VER:
-                    ```json
                     {
                         "answer_key": "B",
                         "steps": [
@@ -467,9 +464,8 @@ with tab1:
                             {"title": "Modeli Kurma", "content": "Alanı bulmak için $A = a^2$ bağıntısını kullanacağız."},
                             {"title": "Sonuç Adımı", "content": "$A = (6\\sqrt{2})^2 = 36 \\cdot 2 = 72\\text{ cm}^2$ bulunur."}
                         ],
-                        "teacher_tip": "Öğrenciler genellikle karekökten çıkarırken katsayının karesini almayı unutur. $6\\sqrt{2}$'nin karesi $36 \\cdot 2 = 72$'dir."
+                        "teacher_tip": "Karekökten çıkarırken katsayının karesini almayı unutmayın."
                     }
-                    ```
                     """
                     
                     if teacher_feedback:
@@ -500,7 +496,7 @@ with tab1:
 # ==========================================
 with tab2:
     st.subheader("Kitaptan Orijinal Soru ve Canlı Tahta Çözümü")
-    st.caption("Kazanım ve seviye seçin; sistem kitaptaki sayfayı sol tarafa getirsin, sağ tarafta öğretmen animasyonla tahtaya çözsün.")
+    st.caption("Kazanım ve seviye seçin; kitaptaki orijinal sayfa sol tarafa gelsin, sağ tarafta tahtaya adım adım çözülsün.")
     
     col_k1, col_k2 = st.columns([2, 1])
     with col_k1:
@@ -532,23 +528,20 @@ with tab2:
                     Hedef Seviye: '{selected_level}'
                     Ek Kriter: '{extra_filter_note}'
 
-                    Bu kriterlere tam uyan sorunun yer aldığı PDF SAYFA NUMARASINI tespit et.
-                    Ardından bu sorunun dijital yeşil tahtaya yazılacak adım adım KaTeX ($...$) çözümünü hazırla.
+                    Bu kriterlere uyan sorunun yer aldığı PDF SAYFA NUMARASINI tespit et ve dijital tahtaya yazılacak adımları hazırla.
                     
                     YANITINI ŞU KESİN JSON FORMATINDA VER:
-                    ```json
                     {{
                         "page_number": 15,
                         "question_title": "Test 3 - Soru 4",
                         "answer_key": "C",
                         "steps": [
                             {{"title": "Kuralı Hatırlayalım", "content": "EBOB problemlerinde bütünden parçaya gidilir."}},
-                            {{"title": "Ortak Bölen Hesabı", "content": "$\\text{EBOB}(48, 60) = 12$ bulunur."}},
-                            {{"title": "Sonuç ve Kontrol", "content": "Aralık sayısı $48/12 + 60/12 = 4 + 5 = 9$ olur."}}
+                            {{"title": "Ortak Bölen Hesabı", "content": "$\\text{{EBOB}}(48, 60) = 12$ bulunur."}},
+                            {{"title": "Sonuç ve Kontrol", "content": "Aralık sayısı $48/12 + 60/12 = 9$ olur."}}
                         ],
-                        "teacher_tip": "Öğrenciler genellikle köşelere dikilen ağaçları mükerrer sayabilir, formülü dikkatli uygulayın."
+                        "teacher_tip": "Köşelere dikilen ağaçları mükerrer saymamaya dikkat edin."
                     }}
-                    ```
                     """
                 ]
                 
@@ -586,7 +579,7 @@ with tab2:
                         render_chalkboard_ui(json.dumps(steps_list), tip, ans_key)
                             
                 except Exception as e:
-                    st.error(f"Soru getirilirken bir hata oluştu: {str(e)}")
+                    st.error(f"Hata: {str(e)}")
 
 # ==========================================
 # SEKME 3: DENEME ANALİZİ & KOÇLUK REÇETESİ
