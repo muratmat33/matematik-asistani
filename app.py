@@ -137,7 +137,7 @@ tab1, tab2, tab3 = st.tabs([
 ])
 
 # ==========================================
-# SEKME 1: SORU ÇÖZÜMÜ
+# SEKME 1: SORU ÇÖZÜMÜ & DÜZELTME
 # ==========================================
 with tab1:
     col_img, col_sol = st.columns([1, 1])
@@ -150,6 +150,12 @@ with tab1:
             img_obj = Image.open(q_img)
             st.image(img_obj, use_container_width=True)
             
+        # Öğretmen Müdahale ve Düzeltme Alanı
+        teacher_feedback = st.text_input(
+            "Öğretmen İpucu / Düzeltme Notu (Opsiyonel):",
+            placeholder="Örn: Cevap anahtarı C şıkkı / Havuzun kenarını kök 72 olarak al / 2. adımı tekrar hesapla."
+        )
+        
         btn_solve = st.button("Soruyu Analiz Et, Çöz ve Doğrula", type="primary", use_container_width=True)
 
     with col_sol:
@@ -163,19 +169,25 @@ with tab1:
                     for _, doc in st.session_state.active_books:
                         payload.append(doc)
                     payload.append(img_obj)
-                    payload.append("""
+                    
+                    prompt_instruction = """
                     Bu soruyu analiz et ve çöz:
                     1. Hangi MEB kazanımına ait olduğunu belirt (Örn: M.8.1.1.2).
                     2. Zorluk seviyesini belirle (Kazanım / Pekiştirme / Yeni Nesil).
                     3. Kitaplardaki cevap anahtarıyla teyit edilmiş adım adım çözümü ver.
                     4. 'Öğretmenin Püf Noktası / İşlem Tuzağı' uyarısı ekle.
-                    """)
+                    """
+                    
+                    if teacher_feedback:
+                        prompt_instruction += f"\n\nÖNEMLİ ÖĞRETMEN DÜZELTMESİ / İPUCU: '{teacher_feedback}'. Bu notu doğrudan referans alarak çözüm adımlarını ve sonucunu bu doğrultuda kesinleştir."
+                        
+                    payload.append(prompt_instruction)
                     
                     try:
                         res = client.models.generate_content(
                             model="gemini-2.5-flash",
                             contents=payload,
-                            config=types.GenerateContentConfig(temperature=0.2)
+                            config=types.GenerateContentConfig(temperature=0.1)
                         )
                         st.markdown(res.text)
                     except Exception as e:
@@ -203,7 +215,7 @@ with tab2:
     with col_m1:
         op_mode = st.radio("İşlem Modu", ["Kitaptan Birebir Soru Bul", "Kitap Formatında Yeni Soru Üret"])
     with col_m2:
-        extra_note = st.text_input("Özel Öğretmen Notu (Opsiyonel)", placeholder="Örn: EBOB-EKOK'ta ağaç dikme veya aralık bulma sorusu olsun.")
+        extra_note = st.text_input("Özel Öğretmen Notu (Opsiyonel)", placeholder="Örn: EBOB-EKOK'ta aralık bulma sorusu olsun.")
         
     if st.button("Soruyu Listele / Üret", type="primary"):
         if not st.session_state.active_books:
