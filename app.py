@@ -29,10 +29,51 @@ client = genai.Client(
 if "active_books" not in st.session_state:
     st.session_state.active_books = []
 
-# --- SOL MENÜ: KİTAP YÜKLEME ---
+# --- MEB RESMİ 8. SINIF LGS KAZANIM LİSTESİ ---
+LGS_KAZANIMLAR = [
+    "M.8.1.1.1. Pozitif tam sayıların çarpanları ve asal çarpanlar",
+    "M.8.1.1.2. İki doğal sayının EBOB ve EKOK'u ve ilgili problemler",
+    "M.8.1.1.3. İki doğal sayının aralarında asal olması",
+    "M.8.1.2.1. Tam sayıların tam sayı kuvvetleri (Negatif üs dahil)",
+    "M.8.1.2.2. Üslü ifadelerle çarpma ve bölme kuralları",
+    "M.8.1.2.3. Ondalık gösterimleri 10'un kuvvetleriyle çözümleme",
+    "M.8.1.2.4. Çok büyük ve çok küçük sayılar ve bilimsel gösterim",
+    "M.8.1.3.1. Tam kare sayılar ve karekök ilişkisi",
+    "M.8.1.3.2. Tam kare olmayan sayıların yaklaşık değeri ve aralık bulma",
+    "M.8.1.3.3. Kareköklü ifadeyi a√b şeklinde yazma ve katsayıyı kök içine alma",
+    "M.8.1.3.4. Kareköklü ifadelerde çarpma ve bölme işlemleri",
+    "M.8.1.3.5. Kareköklü ifadelerde toplama ve çıkarma işlemleri",
+    "M.8.1.3.6. Doğal sayı yapan çarpanlar (Karekökten kurtarma)",
+    "M.8.1.3.7. Ondalık ifadelerin karekökleri",
+    "M.8.1.3.8. Gerçek sayılar (Rasyonel ve İrrasyonel ayrımı)",
+    "M.8.4.1.1. Çizgi ve sütun grafiklerini yorumlama",
+    "M.8.4.1.2. Sütun, daire ve çizgi grafikleri arasında dönüşüm yapma",
+    "M.8.5.1.1. Bir olaya ait olası durumları belirleme",
+    "M.8.5.1.5. Basit bir olayın olma olasılığını hesaplama",
+    "M.8.2.1.1. Basit cebirsel ifadelerin anlamı ve yazımı",
+    "M.8.2.1.2. Cebirsel ifadelerin çarpımı",
+    "M.8.2.1.3. Özdeşlikler ve geometrik modeller ((a±b)², a²-b²)",
+    "M.8.2.1.4. Cebirsel ifadeleri çarpanlarına ayırma",
+    "M.8.2.2.1. Birinci dereceden bir bilinmeyenli denklemleri çözme",
+    "M.8.2.2.2. Koordinat sistemi ve sıralı ikililer",
+    "M.8.2.2.3. Doğrusal denklemlerin grafiğini çizme",
+    "M.8.2.2.4. Doğrusal ilişki içeren tablo, grafik ve denklemleri yorumlama",
+    "M.8.2.2.5. Doğrunun eğimi ve grafik-denklem ilişkisi",
+    "M.8.2.3.1. Günlük hayat durumlarına uygun eşitsizlikler yazma",
+    "M.8.2.3.2. Birinci dereceden bir bilinmeyenli eşitsizlikleri çözme ve sayı doğrusu",
+    "M.8.3.1.1. Üçgende kenarortay, açıortay ve yükseklik",
+    "M.8.3.1.2. Üçgen eşitsizliği (Kenar uzunlukları bağıntısı)",
+    "M.8.3.1.3. Açı-kenar bağıntıları",
+    "M.8.3.1.5. Pisagor bağıntısı ve yeni nesil problemler",
+    "M.8.3.2.2. Benzer çokgenler, benzerlik oranı ve alan-çevre ilişkisi",
+    "M.8.3.3.1. Dönüşüm geometrisi (Öteleme ve yansıma)",
+    "M.8.3.4.1. Prizmalar, silindir, piramit ve koninin temel elemanları ve açınımları"
+]
+
+# --- SOL MENÜ: KİTAP VE KAYNAK YÖNETİMİ ---
 with st.sidebar:
     st.header("📚 Soru Bankası & Deneme Havuzu")
-    st.caption("8. sınıf kitap veya deneme PDF'lerinizi buradan sisteme yükleyin.")
+    st.caption("8. sınıf PDF kitap veya denemelerinizi buradan yükleyin.")
     
     uploaded_files = st.file_uploader(
         "PDF Kitap / Deneme Seçin", 
@@ -42,7 +83,7 @@ with st.sidebar:
     
     if uploaded_files:
         if st.button("Kitapları Sisteme Tanıt ve İndeksle", use_container_width=True):
-            with st.spinner("Kitaplar taranıyor, test tipleri ve cevap anahtarları haritalanıyor..."):
+            with st.spinner("Kitaplar taranıyor, seviyeler ve cevap anahtarları haritalanıyor..."):
                 processed = []
                 for f in uploaded_files:
                     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
@@ -68,19 +109,22 @@ with st.sidebar:
         for name, _ in st.session_state.active_books:
             st.markdown(f"- 📘 `{name}`")
 
-# --- PEDAGOJİK TALİMAT ŞABLONU ---
+# --- PEDAGOJİK TALİMAT VE KOÇLUK PROTOKOLÜ ---
 BASE_TEACHER_PROMPT = """
-Sen LGS hazırlık sürecinde uzman, kavramsal öğretimi merkeze alan tecrübeli bir 8. Sınıf Matematik Öğretmenisin.
+Sen LGS hazırlık sürecinde uzman, MEB müfredatına ve soru mantığına hâkim bir 8. Sınıf Matematik Öğretmeni ve Öğrenci Koçusun.
 Sana referans olarak 8. sınıf soru bankaları ve deneme PDF'leri verilmektedir.
 
-KİTAPLARI ANALİZ EDERKEN ŞU KURALLARA DİKKAT ET:
-1. TEST KADEMELERİNİ AYIRT ET: Bir kitabın içinde testler sırayla gider.
-   - Kazanım/Kavrama: Temel kuralı doğrudan sorgulayan kısa sorular.
-   - Pekiştirme: Orta zorlukta, kısa kurgulu sorular.
+DİKKAT EDİLECEK TEMEL İLKELER:
+1. TEST SEVİYELERİNİ AYIRT ET:
+   - Kazanım/Kavrama: Temel formül ve işlem becerisi.
+   - Pekiştirme: Orta zorlukta, kısa modellemeli sorular.
    - Yeni Nesil: Günlük hayat bağlamı, şekil/tablo içeren LGS tarzı beceri temelli sorular.
-   - Çıkmış/Örnek: MEB sınav soruları formatı.
-2. CEVAP ANAHTARI KONTROLÜ: Kitapların sonunda yer alan cevap anahtarlarını kontrol et. Kendi çözümünle cevap anahtarındaki seçeneği karşılaştır. Eğer bir çelişki varsa işlem adımlarını tekrar teyit ederek doğrulanmış sonuca ulaş.
-3. PEDAGOJİK ANLATIM: Sadece sonucu söyleme. Öğrenciye formülü neden kullandığını, kritik işlem tuzaklarını ("Burada şuna dikkat et...") açıkla. Matematiksel gösterimleri LaTeX ($...$) formatında yaz.
+2. CEVAP ANAHTARI DOĞRULAMASI: Soruların doğruluğunu kitap sonundaki cevap anahtarlarıyla çapraz denetle.
+3. HATA TÜRÜ ANALİZİ (KOÇLUK):
+   - Kavram/Kural Hatası: Öğrenciye formülün mantığı ve temel kural hatırlatılmalı.
+   - Okuduğunu Anlama/Modelleme Hatası: Sorunun matematik cümlesine nasıl döküleceği gösterilmeli.
+   - Süre/İşlem Hatası: Turlama taktiği ve kestirme işlem yöntemleri önerilmeli.
+4. Çözümlerde matematiksel gösterimleri LaTeX ($...$) formatında yaz.
 """
 
 # --- ANA EKRAN SEKMELERİ ---
@@ -88,8 +132,8 @@ st.title("📐 8. Sınıf Akıllı Matematik Asistanı & LGS Koçu")
 
 tab1, tab2, tab3 = st.tabs([
     "📷 Soru Çözümü & Kontrol", 
-    "🎯 Kitaptan Soru Seç & Üret", 
-    "📊 Deneme Analizi & Telafi Reçetesi"
+    "🎯 Kazanım & Seviyeli Soru Seçimi", 
+    "📊 Deneme Analizi & Koçluk Reçetesi"
 ])
 
 # ==========================================
@@ -114,17 +158,17 @@ with tab1:
             if not img_obj:
                 st.warning("Lütfen önce bir soru fotoğrafı yükleyin.")
             else:
-                with st.spinner("Soru çözülüyor, kitap seviyesi belirleniyor ve cevap anahtarı taranıyor..."):
+                with st.spinner("Soru çözülüyor, kazanım eşleştiriliyor ve cevap anahtarı taranıyor..."):
                     payload = [BASE_TEACHER_PROMPT]
                     for _, doc in st.session_state.active_books:
                         payload.append(doc)
                     payload.append(img_obj)
                     payload.append("""
-                    Bu soruyu çöz:
-                    1. Sorunun seviyesini belirle (Kazanım mı, Pekiştirme mi, Yeni Nesil mi?).
-                    2. Eğer bu soru ekteki kitaplardan birindeyse, arka cevap anahtarından kontrol et ve belirt.
-                    3. Adım adım pedagojik çözümünü yap.
-                    4. 'Öğretmenin Püf Noktası / Dikkat Tuzağı' uyarısı ekle.
+                    Bu soruyu analiz et ve çöz:
+                    1. Hangi MEB kazanımına ait olduğunu belirt (Örn: M.8.1.1.2).
+                    2. Zorluk seviyesini belirle (Kazanım / Pekiştirme / Yeni Nesil).
+                    3. Kitaplardaki cevap anahtarıyla teyit edilmiş adım adım çözümü ver.
+                    4. 'Öğretmenin Püf Noktası / İşlem Tuzağı' uyarısı ekle.
                     """)
                     
                     try:
@@ -138,59 +182,47 @@ with tab1:
                         st.error(f"Hata: {str(e)}")
 
 # ==========================================
-# SEKME 2: KİTAPTAN SORU SEÇ & ÜRET
+# SEKME 2: KAZANIM & SEVİYELİ SORU SEÇİMİ
 # ==========================================
 with tab2:
-    st.subheader("Kitap Havuzundan Filtreli Soru Seçimi / Üretimi")
-    st.caption("Yüklediğiniz kitapların içindeki ilgili seviyedeki testlerden soru seçin veya o kalıpta yeni soru türetin.")
+    st.subheader("Kazanım Ağacına Göre Soru Çekme & Üretme")
+    st.caption("Resmi MEB kazanımını ve istediğiniz zorluk seviyesini seçerek kitaplardan soru getirin.")
     
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        topic = st.selectbox("Ünite / Konu", [
-            "Çarpanlar ve Katlar (EBOB-EKOK)",
-            "Üslü İfadeler",
-            "Kareköklü İfadeler",
-            "Veri Analizi",
-            "Basit Olayların Olma Olasılığı",
-            "Cebirsel İfadeler ve Özdeşlikler",
-            "Doğrusal Denklemler",
-            "Eşitsizlikler",
-            "Üçgenler",
-            "Eşlik ve Benzerlik",
-            "Dönüşüm Geometrisi",
-            "Geometrik Cisimler"
-        ])
-    with c2:
-        difficulty = st.selectbox("İstenen Soru Seviyesi", [
-            "Kazanım / Kavrama Düzeyi (Temel İşlem & Kural)",
-            "Pekiştirme Düzeyi (Geçiş & Orta Düzey Problem)",
-            "Yeni Nesil / Beceri Temelli (LGS Sınav Düzeyi)",
+    col_k1, col_k2 = st.columns([2, 1])
+    with col_k1:
+        selected_kazanim = st.selectbox("🎯 MEB LGS Matematik Kazanımı", LGS_KAZANIMLAR)
+    with col_k2:
+        selected_level = st.selectbox("İstenen Soru Seviyesi", [
+            "Kazanım / Kavrama Düzeyi (Temel Kural & İşlem)",
+            "Pekiştirme Düzeyi (Geçiş & Orta Zorluk)",
+            "Yeni Nesil / Beceri Temelli (LGS Düzeyi)",
             "MEB Çıkmış Soru / Örnek Soru Benzeri"
         ])
-    with c3:
-        mode = st.radio("İşlem Türü", ["Kitaptan Birebir Soru Bul/Getir", "Kitap Formatında Yeni Soru Üret"])
         
-    custom_note = st.text_input("Özel Öğretmen Notu (Opsiyonel)", placeholder="Örn: Soruda karekök yaklaşık değer ve cetvel kullanımı olsun.")
-    
-    if st.button("Soruyu Getir / Üret", type="primary"):
+    col_m1, col_m2 = st.columns([1, 2])
+    with col_m1:
+        op_mode = st.radio("İşlem Modu", ["Kitaptan Birebir Soru Bul", "Kitap Formatında Yeni Soru Üret"])
+    with col_m2:
+        extra_note = st.text_input("Özel Öğretmen Notu (Opsiyonel)", placeholder="Örn: EBOB-EKOK'ta ağaç dikme veya aralık bulma sorusu olsun.")
+        
+    if st.button("Soruyu Listele / Üret", type="primary"):
         if not st.session_state.active_books:
             st.warning("Lütfen önce sol menüden en az bir kitap PDF'i yükleyin.")
         else:
-            with st.spinner("Kitaplar taranıyor, belirtilen seviyedeki testten soru seçiliyor..."):
+            with st.spinner("Kitaplar taranıyor, ilgili kazanım ve test seviyesinden soru getiriliyor..."):
                 payload = [BASE_TEACHER_PROMPT]
                 for _, doc in st.session_state.active_books:
                     payload.append(doc)
                 
                 payload.append(f"""
                 GÖREV:
-                Konu: {topic}
-                Hedef Seviye: {difficulty}
-                İşlem Modu: {mode}
-                Ek Öğretmen Notu: {custom_note}
+                Hedef Kazanım: {selected_kazanim}
+                Hedef Seviye: {selected_level}
+                İşlem Modu: {op_mode}
+                Ek Not: {extra_note}
 
-                Yüklenen kitapların içinden '{difficulty}' niteliğindeki test sayfalarını bul.
-                Eğer 'Kitaptan Birebir Soru Getir' seçildiyse: O testten tam bu nitelikte bir soruyu, şıklarıyla ve kitabın sonundaki cevap anahtarıyla doğrulanmış çözümüyle aktar.
-                Eğer 'Yeni Soru Üret' seçildiyse: Kitaptaki o test seviyesinin dili ve kurgusuyla birebir eşdeğer yeni bir soru yaz ve adım adım çözümünü ekle.
+                Yüklenen kitapları tara. '{selected_kazanim}' kazanımına ait ve '{selected_level}' niteliğindeki test sayfalarından bir soru seç veya üret.
+                Soruyu şıklarıyla, doğru seçeneğiyle ve cevap anahtarıyla teyit edilmiş çözümüyle birlikte göster.
                 """)
                 
                 try:
@@ -204,49 +236,86 @@ with tab2:
                     st.error(f"Hata: {str(e)}")
 
 # ==========================================
-# SEKME 3: DENEME KARNESİ & TELAFİ REÇETESİ
+# SEKME 3: DENEME ANALİZİ & KOÇLUK REÇETESİ
 # ==========================================
 with tab3:
-    st.subheader("Öğrenci Deneme Karnesi & Kişisel Telafi Reçetesi")
-    st.caption("Öğrencinin LGS denemesinde boş bıraktığı veya yanlış yaptığı kazanımları girin; sistem kitaplardan aşamalı telafi föyü oluştursun.")
+    st.subheader("📊 LGS Deneme Analizi & Öğrenci Koçluk Reçetesi")
+    st.caption("Öğrencinin denemedeki eksik kazanımlarını ve hata kök nedenini seçin; sistem kişisel telafi föyü ve çalışma planı hazırlasın.")
     
-    student_name = st.text_input("Öğrenci Adı Soyadı", placeholder="Örn: Ahmet Yılmaz")
-    incorrect_topics = st.text_area(
-        "Yanlış / Boş Bırakılan Konular ve Kazanımlar",
-        placeholder="Örn:\n1. EBOB-EKOK problemleri (özellikle aralık bulma)\n2. Kareköklü sayılarda toplama ve yaklaşık değer"
+    col_s1, col_s2 = st.columns(2)
+    with col_s1:
+        std_name = st.text_input("Öğrenci Adı Soyadı", placeholder="Örn: Ceren Taşkın")
+    with col_s2:
+        std_net = st.text_input("Deneme Neti (Doğru / Yanlış / Boş)", placeholder="Örn: 14 Doğru, 4 Yanlış, 2 Boş (12.67 Net)")
+
+    st.write("---")
+    st.markdown("#### 🎯 Eksik / Yanlış Yapılan MEB Kazanımları")
+    selected_flaws = st.multiselect(
+        "Denemede kaçırılan kazanımları seçin (Birden fazla seçebilirsiniz):",
+        LGS_KAZANIMLAR,
+        default=[LGS_KAZANIMLAR[1], LGS_KAZANIMLAR[8]]
     )
     
-    if st.button("Kişiye Özel Telafi Reçetesi Oluştur", type="primary"):
+    st.markdown("#### 🔍 Hatanın Bilişsel Kök Nedeni (Öğretmen Gözlemi)")
+    col_h1, col_h2, col_h3 = st.columns(3)
+    with col_h1:
+        err_kavram = st.checkbox("📌 Kavram / Kural Boşluğu (Formülü unutma, tanım bilmeme)")
+    with col_h2:
+        err_model = st.checkbox("📖 Okuduğunu Anlama / Modelleme (Soruyu denkleme dökememe)")
+    with col_h3:
+        err_sure = st.checkbox("⏱️ Süre / İşlem Hatası (Vakit yetmeme, işlemde takılma)")
+        
+    coach_notes = st.text_area("Öğrenci Hakkında Ek Koçluk Gözlemi (Opsiyonel)", placeholder="Örn: Yeni nesil sorularda şekli yorumlamakta zorlanıyor, hemen pes ediyor.")
+
+    if st.button("Kişiye Özel LGS Koçluk Raporu ve Telafi Föyü Oluştur", type="primary", use_container_width=True):
         if not st.session_state.active_books:
             st.warning("Lütfen önce sol menüden en az bir kitap PDF'i yükleyin.")
-        elif not incorrect_topics:
-            st.warning("Lütfen eksik kazanımları yazın.")
+        elif not selected_flaws:
+            st.warning("Lütfen en az bir eksik kazanım seçin.")
         else:
-            with st.spinner(f"{student_name} için kitaplardan özel telafi fasikülü derleniyor..."):
+            with st.spinner(f"{std_name} için deneme analizi yapılıyor ve kitaplardan telafi reçetesi derleniyor..."):
+                error_types = []
+                if err_kavram: error_types.append("Kavram/Kural Boşluğu")
+                if err_model: error_types.append("Okuduğunu Anlama/Modelleme Hatası")
+                if err_sure: error_types.append("Süre Yönetimi ve İşlem Hatası")
+
                 payload = [BASE_TEACHER_PROMPT]
                 for _, doc in st.session_state.active_books:
                     payload.append(doc)
                 
-                payload.append(f"""
-                ÖĞRENCİ TELAFİ PLANI GÖREVİ:
-                Öğrenci: {student_name}
-                Eksik / Yanlış Yapılan Konular:
-                {incorrect_topics}
+                prompt_analysis = f"""
+                LGS MATEMATİK ÖĞRENCİ KOÇLUK RAPORU GÖREVİ:
+                Öğrenci: {std_name}
+                Mevcut Net Durumu: {std_net}
+                Eksik Kazanımlar: {selected_flaws}
+                Tespit Edilen Hata Türleri: {error_types}
+                Öğretmen Notu: {coach_notes}
 
-                Yüklenen kitaplardaki ilgili üniteleri tara ve öğrenci için şu formatta eksiksiz bir 'Kişisel LGS Telafi Föyü' hazırla:
-                1. KRİTİK HATIRLATMA (Özet): Her eksik konu için kitaplardaki püf noktaları ve sık yapılan kavram yanılgılarını 3-4 maddede özetle.
-                2. AŞAMALI SORU REÇETESİ (Her eksik konu için mutlaka 3 seviye sun):
-                   - 🟢 Seviye 1 (Kazanım Sorusu): Temel kavramı oturtmak için.
-                   - 🟡 Seviye 2 (Pekiştirme Sorusu): İşlem ve mantığı güçlendirmek için.
-                   - 🔴 Seviye 3 (LGS Yeni Nesil Sorusu): Denemede kaçırılan soru tarzının birebir muadili.
-                3. CEVAP ANAHTARI VE PEDAGOJİK ÇÖZÜMLER: Soruların sonunda, kitapların arkasındaki cevap anahtarı formatına uygun olarak doğrulanmış detaylı çözümleri sun.
-                """)
+                Lütfen yüklenen kitapları referans alarak öğrenci için şu bölümlerden oluşan kapsamlı bir 'LGS Koçluk & Telafi Raporu' hazırla:
+
+                1. 📋 BİLİŞSEL KOÇLUK ANALİZİ:
+                   - Öğrencinin seçilen hata türlerine göre psikolojik ve stratejik durumu nedir?
+                   - LGS'de bu kazanımların soru potansiyeli nedir ve öğrenci nerelerde takılıyor?
+
+                2. 💡 HIZLI KAZANIM HATIRLATMA REÇETESİ:
+                   - Seçilen her kazanım için kitaplardaki püf noktaları, kritik formülleri ve tuzak noktaları 2'şer maddede özetle.
+
+                3. 📚 KİTAPLARDAN KADEMELİ ÇALIŞMA SORU SETİ:
+                   - Seçilen her eksik kazanım için yüklenen kitaplardaki ilgili testleri tara ve şu 3 seviyede soru listele:
+                     * 🟢 Seviye 1 (Kazanım Sorusu): Temel kuralı oturtmak için.
+                     * 🟡 Seviye 2 (Pekiştirme Sorusu): Muhakeme ve geçiş sorusu.
+                     * 🔴 Seviye 3 (LGS Yeni Nesil Sorusu): Denemede kaçırılan sorunun birebir muadili beceri temelli soru.
+
+                4. 🎯 HAFTALIK KOÇLUK EYLEM PLANI:
+                   - Öğrencinin bu eksikleri kapatması için önümüzdeki 7 günde kaç soru çözmesi ve hangi gün neye çalışması gerektiğine dair somut bir çalışma takvimi.
+                """
+                payload.append(prompt_analysis)
                 
                 try:
                     res = client.models.generate_content(
                         model="gemini-2.5-flash",
                         contents=payload,
-                        config=types.GenerateContentConfig(temperature=0.2)
+                        config=types.GenerateContentConfig(temperature=0.25)
                     )
                     st.markdown(res.text)
                 except Exception as e:
